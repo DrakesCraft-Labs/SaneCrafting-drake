@@ -1,30 +1,50 @@
 # SaneCrafting-drake
 
-## Resumen Drake
-Addon de Slimefun que ajusta recipes, research y experiencia de crafteo.
+[![Rama](https://img.shields.io/badge/branch-1.21--latin-2ea44f)](https://github.com/DrakesCraft-Labs/SaneCrafting-drake/tree/1.21-latin)
+[![Licencia](https://img.shields.io/github/license/DrakesCraft-Labs/SaneCrafting-drake)](https://github.com/DrakesCraft-Labs/SaneCrafting-drake/blob/1.21-latin/LICENSE)
+[![Ultimo commit](https://img.shields.io/github/last-commit/DrakesCraft-Labs/SaneCrafting-drake/1.21-latin)](https://github.com/DrakesCraft-Labs/SaneCrafting-drake/commits/1.21-latin)
 
-## Que anade a Slimefun
-- Extiende contenido de Slimefun con mecanicas y bloques propios del addon.
-- Incluye ajustes de compatibilidad para stack Drake 1.21.
+## Descripción técnica
+Addon que adapta recipes/research/lore para una experiencia de crafteo más limpia en Slimefun.
 
-## Estado
-- Extraido desde drakes-slimefun-labs (rama 1.21-latin).
-- Objetivo: desarrollo aislado por addon y releases independientes.
+## Qué añade a Slimefun
+- Hace más predecible y legible la progresión de crafteo.
+- Reduce errores operativos en recipe discovery.
+- Mejora consistencia entre research y recetas reales.
 
----
+## Características principales
+- Parches de recipe book y research unlock.
+- Conversión/normalización de recetas para mejor UX.
+- Mitigación de ruido por recetas inexistentes legacy.
 
-## SaneCrafting
-A tiny addon QoL addon to make Slimefun feel more vanilla-y by allowing Enhanced Crafting Table recipes to be crafted in a normal Crafting Table.
+## Matriz de compatibilidad
+| Componente | Estado |
+|---|---|
+| Minecraft | 1.21.x |
+| Paper/Purpur | 1.21.x |
+| Slimefun Core Drake | 11.x (línea `1.21-latin`) |
+| Java | 21 |
 
-## Features
-- Allows crafting all Enhanced Crafting Table recipes in a regular crafting grid
-- Adds all Enhanced Crafting Table recipes to the Recipe Book so you can autofill them JEI-style (Caveat: The recipe book can't correctly identify which of the new recipes can be crafted with the material in your inventory, so some may show up as craftable when they're not - this is an inbuilt limitation of Minecraft)
-- Recipes will only show up in crafting book once researched (and obviously will be uncraftable until then)
+## Instalación
+1. Descarga el `.jar` de Releases del repositorio.
+2. Copia el archivo en la carpeta `plugins/` del servidor.
+3. Asegura dependencias (`Slimefun`, `ProtocolLib` u otras según addon).
+4. Reinicia el servidor y revisa `logs/latest.log` para validar carga.
 
-<!-- DRAKES-STATUS:BEGIN -->
-> Estado de sincronizacion: **2026-04-24**.
-> Baseline tecnico vigente: **Paper 1.21.1 + Java 21**.
-> CI principal en `1.21-latin`: **Gates 1-5 en verde**.
-> Nota: el monorepo completo sigue en migracion incremental por lotes.
-<!-- DRAKES-STATUS:END -->
+## Build local
+```bash
+mvn -DskipTests clean package
+```
 
+Artefacto esperado:
+- `target/SaneCrafting-*.jar`
+
+## Flujo de release
+1. Crear branch de cambios (`feature/*` o `fix/*`).
+2. Abrir PR hacia `1.21-latin` con plan de pruebas.
+3. Al mergear, crear tag/release y publicar jar compilado.
+
+Probar en entorno con packs de addons amplios para evitar recetas huérfanas.
+
+## Relación con el monorepo
+Este repositorio se mantiene en paralelo con `drakes-slimefun-labs` para desarrollo aislado por addon y despliegues independientes.
