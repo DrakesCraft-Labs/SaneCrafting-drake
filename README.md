@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="https://raw.githubusercontent.com/DrakesCraft-Labs/SaneCrafting-drake/1.21-latin/banner.svg" alt="SaneCrafting-drake Banner" width="920" />
+  <img src="https://raw.githubusercontent.com/DrakesCraft-Labs/SaneCrafting-drake/main/banner.svg" alt="SaneCrafting-drake Banner" width="920" />
 
 # 🧪 SaneCrafting-Drake
 
