@@ -9,6 +9,7 @@ import lombok.experimental.UtilityClass;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.jetbrains.annotations.Nullable;
@@ -104,13 +105,23 @@ public class CraftingTablePatch {
         Bukkit.getServer().addRecipe(recipe);
     }
 
-    public void apply() {
+    /**
+     * Registers Enhanced Crafting Table recipes one per server tick.
+     *
+     * <p>On current Paper/Purpur, every {@link org.bukkit.Server#addRecipe}
+     * rebuilds the recipe display cache. Registering a large Slimefun catalog
+     * in one scheduler task therefore blocks the primary thread long enough
+     * for the watchdog to fire. Keeping every registration on the primary
+     * thread preserves Bukkit's threading contract while bounding each tick.</p>
+     */
+    public void applyBatched(Runnable completion) {
         List<ItemStack[]> recipes = getRecipes();
         if (recipes == null) {
+            completion.run();
             return;
         }
 
-        int changedRecipes = 0;
+        List<Runnable> conversions = new ArrayList<>();
         for (int j = 0; j < recipes.size(); j += 2) {
             ItemStack[] input = recipes.get(j);
             ItemStack output = recipes.get(j + 1)[0];
@@ -119,31 +130,53 @@ public class CraftingTablePatch {
                 continue;
             }
 
-            try {
-                convertRecipe(Arrays.asList(input), output);
-            } catch (RuntimeException e) {
-                String name = PlainTextComponentSerializer.plainText().serialize(output.displayName());
-                SaneCrafting.getInstance().getLogger().severe("Failed to convert Enhanced Crafting Table recipe for " + name);
-                e.printStackTrace();
-                continue;
-            }
-
-            changedRecipes++;
+            conversions.add(() -> convertRecipeSafely(Arrays.asList(input), output));
         }
 
         for (SlimefunItem item : Slimefun.getRegistry().getEnabledSlimefunItems()) {
             if (item instanceof VanillaItem vanillaItem && item.getRecipeType() == RecipeType.ENHANCED_CRAFTING_TABLE) {
-                try {
-                    convertRecipe(generateRecipeId(vanillaItem), Arrays.asList(vanillaItem.getRecipe()), vanillaItem.getRecipeOutput());
-                    changedRecipes++;
-                } catch (RuntimeException e) {
-                    String name = PlainTextComponentSerializer.plainText().serialize(vanillaItem.getItem().displayName());
-                    SaneCrafting.getInstance().getLogger().severe("Failed to convert Enhanced Crafting Table recipe for " + name);
-                    e.printStackTrace();
-                }
+                conversions.add(() -> convertVanillaRecipeSafely(vanillaItem));
             }
         }
 
-        SaneCrafting.getInstance().getLogger().info("Applied CraftingTable patch and converted " + changedRecipes + " Enhanced Crafting Table recipes to regular Crafing Table recipes");
+        if (conversions.isEmpty()) {
+            completion.run();
+            return;
+        }
+
+        new BukkitRunnable() {
+            private int nextRecipe;
+
+            @Override
+            public void run() {
+                conversions.get(nextRecipe++).run();
+                if (nextRecipe == conversions.size()) {
+                    cancel();
+                    SaneCrafting.getInstance().getLogger().info("Applied CraftingTable patch and converted "
+                            + nextRecipe + " Enhanced Crafting Table recipes to regular Crafing Table recipes");
+                    completion.run();
+                }
+            }
+        }.runTaskTimer(SaneCrafting.getInstance(), 1L, 1L);
+    }
+
+    private void convertRecipeSafely(List<ItemStack> input, ItemStack output) {
+        try {
+            convertRecipe(input, output);
+        } catch (RuntimeException e) {
+            String name = PlainTextComponentSerializer.plainText().serialize(output.displayName());
+            SaneCrafting.getInstance().getLogger().severe("Failed to convert Enhanced Crafting Table recipe for " + name);
+            e.printStackTrace();
+        }
+    }
+
+    private void convertVanillaRecipeSafely(VanillaItem vanillaItem) {
+        try {
+            convertRecipe(generateRecipeId(vanillaItem), Arrays.asList(vanillaItem.getRecipe()), vanillaItem.getRecipeOutput());
+        } catch (RuntimeException e) {
+            String name = PlainTextComponentSerializer.plainText().serialize(vanillaItem.getItem().displayName());
+            SaneCrafting.getInstance().getLogger().severe("Failed to convert Enhanced Crafting Table recipe for " + name);
+            e.printStackTrace();
+        }
     }
 }

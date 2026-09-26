@@ -36,15 +36,8 @@ public final class SaneCrafting extends JavaPlugin implements SlimefunAddon {
 
         new Metrics(this, BSTATS_ID);
 
-        Runnable applyPatches = () -> {
-            UsableInWorkbenchPatch.apply();
-            CraftingTablePatch.apply();
-            RecipeBookResearchPatch.apply();
-            RecipeLorePatch.apply();
-        };
-
-        // Tras STARTUP las recetas ya deben existir antes de que los jugadores sincronicen el libro de recetas
-        // (delay 1 tick provocaba "unrecognized recipe" en el primer login).
+        // El registro se mantiene en el hilo principal, pero cada alta se reparte
+        // entre ticks para no bloquear el watchdog cuando el catálogo es grande.
         Bukkit.getPluginManager().registerEvents(new Listener() {
             @EventHandler
             public void onServerLoad(ServerLoadEvent e) {
@@ -52,15 +45,20 @@ public final class SaneCrafting extends JavaPlugin implements SlimefunAddon {
                         && e.getType() != ServerLoadEvent.LoadType.RELOAD) {
                     return;
                 }
-                applyPatches.run();
-                if (e.getType() == ServerLoadEvent.LoadType.STARTUP) {
-                    // Segundo pase: addons que registran recetas ECT algo más tarde
-                    Bukkit.getScheduler().runTaskLater(SaneCrafting.this, () -> {
-                        CraftingTablePatch.apply();
-                        RecipeBookResearchPatch.apply();
-                        RecipeLorePatch.apply();
-                    }, 20L);
-                }
+                UsableInWorkbenchPatch.apply();
+                CraftingTablePatch.applyBatched(() -> {
+                    RecipeBookResearchPatch.apply();
+                    RecipeLorePatch.apply();
+                    if (e.getType() == ServerLoadEvent.LoadType.STARTUP) {
+                        // Esperar el primer lote evita que dos pasadas registren recetas en paralelo.
+                        Bukkit.getScheduler().runTaskLater(SaneCrafting.this, () -> {
+                            CraftingTablePatch.applyBatched(() -> {
+                                RecipeBookResearchPatch.apply();
+                                RecipeLorePatch.apply();
+                            });
+                        }, 20L);
+                    }
+                });
             }
         }, this);
 
